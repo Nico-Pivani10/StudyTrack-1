@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "306413881045",
+    "project_id": "studytrack-1ea89",
+    "storage_bucket": "studytrack-1ea89.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:306413881045:android:afe1f606c657592309445c",
+        "android_client_info": {
+          "package_name": "com.example.studytrack"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "306413881045-9ag0cu73gnkedode8e5r57n3pa72dmqu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.studytrack",
+            "certificate_hash": "f99531e778d8888d9d2f03e5eb5b93391f8c9e61"
+          }
+        },
+        {
+          "client_id": "306413881045-sdubc3b9b5qfj93oipmu51ahlhllslm5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFGBOuw_7CTHPHq91GKTMsAUa4LEdJd0E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "306413881045-sdubc3b9b5qfj93oipmu51ahlhllslm5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "306413881045-o4htus00uibahdsbr2kn2nv0llssa2vl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.testeNotificacao"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:306413881045:android:aa1d0e9eb93105c109445c",
+        "android_client_info": {
+          "package_name": "com.example.teste_notificacao"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "306413881045-sdubc3b9b5qfj93oipmu51ahlhllslm5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFGBOuw_7CTHPHq91GKTMsAUa4LEdJd0E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "306413881045-sdubc3b9b5qfj93oipmu51ahlhllslm5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "306413881045-o4htus00uibahdsbr2kn2nv0llssa2vl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.testeNotificacao"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
