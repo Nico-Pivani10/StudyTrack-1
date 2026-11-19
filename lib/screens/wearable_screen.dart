@@ -3,7 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/app_data.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/studytrack_repository.dart';
@@ -95,7 +96,7 @@ class _WearableScreenState extends State<WearableScreen> {
   // FIREBASE Y TEMPORIZADOR
   // =====================================================
 
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _flujoTareas;
+  Stream<AppQuerySnapshot>? _flujoTareas;
 
   Timer? _temporizador;
 
@@ -151,7 +152,7 @@ class _WearableScreenState extends State<WearableScreen> {
   // =====================================================
 
   DateTime? _obtenerFecha(Object? valor) {
-    if (valor is Timestamp) {
+    if (valor is AppTimestamp) {
       return valor.toDate();
     }
 
@@ -295,9 +296,7 @@ class _WearableScreenState extends State<WearableScreen> {
   // COMPLETAR TAREA EN FIREBASE
   // =====================================================
 
-  Future<void> _completarTarea(
-    QueryDocumentSnapshot<Map<String, dynamic>> tarea,
-  ) async {
+  Future<void> _completarTarea(AppQueryDocument tarea) async {
     if (_guardando) return;
 
     setState(() {
@@ -307,7 +306,7 @@ class _WearableScreenState extends State<WearableScreen> {
 
     try {
       // ========================================
-      // ACTUALIZAR TAREA EN FIRESTORE
+      // ACTUALIZAR TAREA MEDIANTE LA API
       // ========================================
 
       // Se mantienen los nombres originales
@@ -316,7 +315,7 @@ class _WearableScreenState extends State<WearableScreen> {
 
       await tarea.reference.update({
         'completada': true,
-        'actualizadoEn': FieldValue.serverTimestamp(),
+        'actualizadoEn': AppFieldValue.serverTimestamp(),
       });
     } catch (error) {
       debugPrint('Error al completar tarea: $error');
@@ -370,7 +369,7 @@ class _WearableScreenState extends State<WearableScreen> {
   // MOSTRAR UNA TAREA
   // =====================================================
 
-  Widget _mostrarTarea(QueryDocumentSnapshot<Map<String, dynamic>> tarea) {
+  Widget _mostrarTarea(AppQueryDocument tarea) {
     final datos = tarea.data();
     final textos = AppLocalizations.of(context);
 
@@ -612,10 +611,10 @@ class _WearableScreenState extends State<WearableScreen> {
     }
 
     // ==========================================
-    // ESCUCHA DE FIRESTORE
+    // ESCUCHA DE LA API
     // ==========================================
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<AppQuerySnapshot>(
       stream: _flujoTareas,
 
       builder: (context, snapshot) {

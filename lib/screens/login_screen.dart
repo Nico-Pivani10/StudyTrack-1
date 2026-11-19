@@ -4,7 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/api_client.dart';
+import '../services/api_login.dart';
 import '../services/language_controller.dart';
+import '../widgets/legal_consent.dart';
 
 import 'dashboard_screen.dart';
 import 'register_screen.dart';
@@ -332,7 +335,11 @@ class _LoginScreenState extends State<LoginScreen> {
       // ACCEDER A STUDYTRACK
       // ========================================
 
+      if (!await connectApi(context)) return;
       abrirDashboard();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      mostrarMensaje(error.message);
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
 
@@ -411,6 +418,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      final acceptance = await requestLegalAcceptance(context);
+      if (acceptance == null || !mounted) return;
       // ========================================
       // GOOGLE EN NAVEGADORES
       // ========================================
@@ -490,7 +499,11 @@ class _LoginScreenState extends State<LoginScreen> {
       // ENTRAR AL DASHBOARD
       // ========================================
 
+      if (!await connectApi(context, acceptance: acceptance)) return;
       abrirDashboard();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      mostrarMensaje(error.message);
     } on GoogleSignInException catch (error) {
       debugPrint(
         'Error de Google Sign-In: '

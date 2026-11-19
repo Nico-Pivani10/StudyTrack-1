@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/app_data.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/language_controller.dart';
@@ -93,7 +94,7 @@ class _TasksScreenState extends State<TasksScreen> {
   // =====================================================
 
   DateTime? obtenerFecha(Object? valor) {
-    if (valor is Timestamp) {
+    if (valor is AppTimestamp) {
       return valor.toDate();
     }
 
@@ -124,9 +125,8 @@ class _TasksScreenState extends State<TasksScreen> {
   void mostrarMensaje(String mensaje) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensaje)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   // =====================================================
@@ -171,7 +171,7 @@ class _TasksScreenState extends State<TasksScreen> {
       final idNotificacion = _generarIdNotificacion();
 
       // ==========================================
-      // GUARDAR EN FIRESTORE
+      // GUARDAR MEDIANTE LA API
       // ==========================================
 
       // Se mantienen exactamente los mismos campos
@@ -182,13 +182,13 @@ class _TasksScreenState extends State<TasksScreen> {
         'titulo': titulo.trim(),
         'descripcion': '',
         'materiaId': '',
-        'fechaEntrega': Timestamp.fromDate(fechaEntrega),
+        'fechaEntrega': AppTimestamp.fromDate(fechaEntrega),
         'prioridad': 'MEDIA',
         'minutosAntes': minutosAntes,
         'notificacionId': idNotificacion,
         'completada': false,
-        'creadaEn': FieldValue.serverTimestamp(),
-        'actualizadoEn': FieldValue.serverTimestamp(),
+        'creadaEn': AppFieldValue.serverTimestamp(),
+        'actualizadoEn': AppFieldValue.serverTimestamp(),
       });
 
       // ==========================================
@@ -260,7 +260,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
   Future<void> cambiarEstado(
     StudyTrackRepository repositorio,
-    QueryDocumentSnapshot<Map<String, dynamic>> tarea,
+    AppQueryDocument tarea,
     bool completada,
   ) async {
     final datos = tarea.data();
@@ -340,7 +340,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
   Future<void> eliminarTarea(
     StudyTrackRepository repositorio,
-    QueryDocumentSnapshot<Map<String, dynamic>> tarea,
+    AppQueryDocument tarea,
   ) async {
     final textos = AppLocalizations.of(context);
 
@@ -376,7 +376,7 @@ class _TasksScreenState extends State<TasksScreen> {
     if (!mounted || confirmar != true) return;
 
     // ==========================================
-    // ELIMINAR EN FIRESTORE
+    // ELIMINAR MEDIANTE LA API
     // ==========================================
 
     try {
@@ -464,7 +464,7 @@ class _TasksScreenState extends State<TasksScreen> {
       // ==========================================
       // LISTA DE TAREAS
       // ==========================================
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: StreamBuilder<AppQuerySnapshot>(
         stream: repositorio.escucharTareas,
 
         builder: (context, snapshot) {

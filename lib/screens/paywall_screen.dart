@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/app_data.dart';
+import '../services/studytrack_repository.dart';
 
 // =====================================================
 // MODELO PARA DESCRIBIR LOS BENEFICIOS
@@ -111,7 +113,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   // =====================================================
-  // CARGAR PLAN DESDE FIRESTORE
+  // CARGAR PLAN DESDE LA API
   // =====================================================
 
   Future<void> cargarPlanActual() async {
@@ -129,10 +131,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     }
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('usuarios')
-          .doc(usuario.uid)
-          .get();
+      final doc = await StudyTrackRepository(usuario.uid).usuario.get();
 
       if (!mounted) return;
 
@@ -174,13 +173,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
   void mostrarMensaje(String mensaje) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensaje), backgroundColor: bordo));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje), backgroundColor: bordo));
   }
 
   // =====================================================
-  // GUARDAR PLAN EN FIRESTORE
+  // GUARDAR PLAN MEDIANTE LA API
   // =====================================================
 
   Future<void> aplicarPlan() async {
@@ -201,19 +199,14 @@ class _PaywallScreenState extends State<PaywallScreen> {
     });
 
     try {
-      // Se mantienen los mismos campos de Firestore.
+      // El repositorio guarda el plan mediante la API.
       // No se realiza ningún cobro real.
 
-      await FirebaseFirestore.instance
-          .collection('usuarios')
-          .doc(usuario.uid)
-          .set({
-            'plan': planSeleccionado,
-            'metodoPagoSimulado': planSeleccionado == 'gratis'
-                ? null
-                : metodoPago,
-            'planActualizadoEn': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+      await StudyTrackRepository(usuario.uid).usuario.set({
+        'plan': planSeleccionado,
+        'metodoPagoSimulado': planSeleccionado == 'gratis' ? null : metodoPago,
+        'planActualizadoEn': AppFieldValue.serverTimestamp(),
+      }, merge: true);
 
       if (!mounted) return;
 
@@ -1342,10 +1335,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   _t(
                     'No se pudo verificar tu plan. '
                         'Revisá tu sesión y la conexión '
-                        'con Firestore.',
+                        'con StudyTrack.',
                     'Não foi possível verificar '
                         'seu plano. Confira sua sessão '
-                        'e a conexão com o Firestore.',
+                        'e a conexão com o StudyTrack.',
                   ),
 
                   textAlign: TextAlign.center,

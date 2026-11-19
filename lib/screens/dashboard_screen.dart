@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/app_data.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/studytrack_repository.dart';
@@ -14,8 +15,8 @@ import 'wearable_screen.dart';
 import 'tasks_screen.dart';
 import 'notifications_screen.dart';
 
-// Alias para los documentos de Firestore.
-typedef _Documentos = List<QueryDocumentSnapshot<Map<String, dynamic>>>;
+// Registros académicos recibidos de la API.
+typedef _Documentos = List<AppQueryDocument>;
 
 // Actividad utilizada para mostrar el resumen.
 class _ActividadResumen {
@@ -104,9 +105,8 @@ class DashboardScreen extends StatelessWidget {
   // ============================================
 
   void _abrirPantalla(BuildContext context, Widget pantalla) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (context) => pantalla));
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (context) => pantalla));
   }
 
   void _navegar(BuildContext context, int indice) {
@@ -134,7 +134,7 @@ class DashboardScreen extends StatelessWidget {
   // ============================================
 
   DateTime? _convertirFecha(Object? valor) {
-    if (valor is Timestamp) {
+    if (valor is AppTimestamp) {
       return valor.toDate();
     }
 
@@ -402,22 +402,22 @@ class DashboardScreen extends StatelessWidget {
   }
 
   // ============================================
-  // RESUMEN DE FIRESTORE
+  // RESUMEN DE LA API
   // ============================================
 
   Widget _resumenAcademico(
     BuildContext context,
     StudyTrackRepository repositorio,
   ) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<AppQuerySnapshot>(
       stream: repositorio.escucharMaterias,
 
       builder: (context, materiasSnapshot) {
-        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        return StreamBuilder<AppQuerySnapshot>(
           stream: repositorio.escucharTareas,
 
           builder: (context, tareasSnapshot) {
-            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            return StreamBuilder<AppQuerySnapshot>(
               stream: repositorio.escucharExamenes,
 
               builder: (context, examenesSnapshot) {
@@ -437,8 +437,8 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     _t(
                       context,
-                      'Revisá la conexión y las reglas de Firestore.',
-                      'Verifique a conexão e as regras do Firestore.',
+                      'Revisá la conexión y volvé a intentarlo.',
+                      'Verifique a conexão e tente novamente.',
                     ),
                   );
                 }
@@ -950,11 +950,11 @@ class DashboardScreen extends StatelessWidget {
   Widget _metaSemanal(BuildContext context, StudyTrackRepository repositorio) {
     final textos = AppLocalizations.of(context);
 
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<AppDocument>(
       stream: repositorio.escucharUsuario,
 
       builder: (context, usuarioSnapshot) {
-        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        return StreamBuilder<AppQuerySnapshot>(
           stream: repositorio.escucharSesiones,
 
           builder: (context, sesionesSnapshot) {
@@ -969,8 +969,8 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 _t(
                   context,
-                  'Revisá la conexión con Firestore.',
-                  'Verifique a conexão com o Firestore.',
+                  'Revisá la conexión y volvé a intentarlo.',
+                  'Verifique a conexão e tente novamente.',
                 ),
               );
             }
@@ -1126,9 +1126,8 @@ class DashboardScreen extends StatelessWidget {
   Widget _tituloSeccion(BuildContext context, String titulo) {
     return Text(
       titulo,
-      style: Theme.of(
-        context,
-      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+      style: Theme.of(context).textTheme.titleLarge
+          ?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 

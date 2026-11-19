@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/api_client.dart';
+import '../services/api_login.dart';
+import '../services/legal_documents.dart';
+import '../widgets/legal_consent.dart';
 import 'dashboard_screen.dart';
 
 // =====================================================
@@ -17,7 +21,8 @@ import 'dashboard_screen.dart';
 // =====================================================
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final Future<LegalDocuments> Function()? loadLegalDocuments;
+  const RegisterScreen({super.key, this.loadLegalDocuments});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -42,8 +47,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmarController = TextEditingController();
 
   bool _cargando = false;
+  bool _cuentaCreada = false;
   bool _mostrarPassword = false;
   bool _mostrarConfirmacion = false;
+  LegalAcceptance? _legalAcceptance;
 
   // =====================================================
   // TRADUCCIONES
@@ -144,6 +151,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _registrarUsuario() async {
     if (_cargando) return;
+    if (_cuentaCreada) {
+      Navigator.pop(context);
+      return;
+    }
+    if (_legalAcceptance == null) {
+      _mostrarMensaje(
+        _t(
+          'Leé y aceptá los términos antes de crear tu cuenta.',
+          'Leia e aceite os termos antes de criar sua conta.',
+        ),
+      );
+      return;
+    }
 
     if (!_formKey.currentState!.validate()) {
       return;
@@ -166,6 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final credencial = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: correo, password: password);
+      _cuentaCreada = true;
 
       // ========================================
       // GUARDAR NOMBRE DEL ESTUDIANTE
@@ -178,6 +199,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       if (!mounted) return;
+      if (!await connectApi(context, acceptance: _legalAcceptance)) return;
+      if (!mounted) return;
 
       // ========================================
       // NAVEGAR AL DASHBOARD
@@ -189,6 +212,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         context,
         MaterialPageRoute(builder: (context) => const DashboardScreen()),
         (route) => false,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _mostrarMensaje(
+        _t(
+              'La cuenta se creó. Volvé al inicio de sesión para intentar la conexión nuevamente. ',
+              'A conta foi criada. Volte ao login para tentar a conexão novamente. ',
+            ) +
+            error.message,
       );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
@@ -529,7 +561,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 20),
+                      LegalConsentField(
+                        loadDocuments: widget.loadLegalDocuments,
+                        enabled: !_cargando && !_cuentaCreada,
+                        onChanged: (value) =>
+                            setState(() => _legalAcceptance = value),
+                      ),
+                      const SizedBox(height: 20),
 
                       // ================================
                       // BOTÓN CREAR CUENTA
@@ -538,7 +577,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         height: 52,
 
                         child: ElevatedButton(
-                          onPressed: _cargando ? null : _registrarUsuario,
+                          onPressed:
+                              _cargando ||
+                                  (!_cuentaCreada && _legalAcceptance == null)
+                              ? null
+                              : _registrarUsuario,
 
                           style: ElevatedButton.styleFrom(
                             backgroundColor: bordo,
@@ -560,7 +603,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 )
                               : Text(
-                                  _t('Crear mi cuenta', 'Criar minha conta'),
+                                  _cuentaCreada
+                                      ? _t(
+                                          'Volver al inicio de sesión',
+                                          'Voltar ao login',
+                                        )
+                                      : _t(
+                                          'Crear mi cuenta',
+                                          'Criar minha conta',
+                                        ),
 
                                   style: const TextStyle(
                                     fontSize: 16,

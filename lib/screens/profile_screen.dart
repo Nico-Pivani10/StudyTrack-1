@@ -2,12 +2,15 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/app_data.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 
 import '../l10n/app_localizations.dart';
+import '../services/api_client.dart';
 import '../services/language_controller.dart';
 import '../services/studytrack_repository.dart';
 import '../theme_controller.dart';
@@ -46,7 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   StudyTrackRepository? _repositorio;
 
-  Stream<DocumentSnapshot<Map<String, dynamic>>>? _perfilStream;
+  Stream<AppDocument>? _perfilStream;
 
   bool _mostrarCorreo = true;
   bool _letraGrande = false;
@@ -145,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Recuperar datos guardados por la versión antigua.
-  // No reemplaza información que ya exista en Firestore.
+  // Completa la información del perfil que aún esté vacía.
   Future<void> _migrarDatosAcademicos() async {
     final repositorio = _repositorio;
 
@@ -177,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       if (cambios.isNotEmpty) {
-        await repositorio.usuario.set(cambios, SetOptions(merge: true));
+        await repositorio.usuario.set(cambios, merge: true);
       }
     } catch (error) {
       debugPrint('No se pudieron migrar los datos: $error');
@@ -187,9 +190,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _mensaje(String mensaje) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensaje)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   Future<void> _informacion(String titulo, String contenido) async {
@@ -278,6 +280,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _cargando = true);
 
     try {
+      await _repositorio!.usuario.set({'nombre': resultado}, merge: true);
       await user.updateDisplayName(resultado);
       await user.reload();
 
@@ -285,6 +288,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() {});
       _mensaje(_textos.profileSaveSuccess);
+    } on ApiException catch (error) {
+      _mensaje(error.message);
     } catch (error) {
       _mensaje(
         _t(
@@ -336,7 +341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final originales = await archivo.readAsBytes();
 
-      // Convertir a una miniatura JPEG para Firestore.
+      // Convertir a una miniatura JPEG para el perfil.
       final imagen = img.decodeImage(originales);
 
       if (imagen == null) {
@@ -368,11 +373,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         throw const FormatException('La imagen sigue siendo demasiado grande.');
       }
 
-      // Guardar en el documento propio de Firestore.
+      // Guardar la foto en el perfil mediante la API.
       await _repositorio!.usuario.set({
-        'fotoPerfilBytes': Blob(fotoComprimida),
-        'fotoPerfilActualizada': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        'fotoPerfilBytes': AppBlob(fotoComprimida),
+        'fotoPerfilActualizada': AppFieldValue.serverTimestamp(),
+      }, merge: true);
 
       _mensaje(_t('Foto de perfil actualizada.', 'Foto de perfil atualizada.'));
     } catch (error) {
@@ -427,8 +432,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       await _repositorio!.usuario.update({
-        'fotoPerfilBytes': FieldValue.delete(),
-        'fotoPerfilActualizada': FieldValue.delete(),
+        'fotoPerfilBytes': AppFieldValue.delete(),
+        'fotoPerfilActualizada': AppFieldValue.delete(),
       });
 
       _mensaje(_t('Foto eliminada.', 'Foto removida.'));
@@ -444,7 +449,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // =====================================================
-  // INFORMACIÓN ACADÉMICA EN FIRESTORE
+  // INFORMACIÓN ACADÉMICA MEDIANTE LA API
   // =====================================================
 
   Future<void> _editarInformacionAcademica(Map<String, dynamic> datos) async {
@@ -900,7 +905,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'StudyTrack utiliza Firebase Authentication '
             'para administrar el inicio de sesión.\n\n'
             'Los datos académicos y la foto personalizada '
-            'se guardan en Firestore, en el documento del usuario.\n\n'
+            'se guardan en Supabase mediante la API de StudyTrack.\n\n'
             'La foto es una miniatura comprimida y no '
             'modifica la foto de tu cuenta Google.\n\n'
             'Las preferencias de idioma, apariencia '
@@ -910,7 +915,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'O StudyTrack utiliza Firebase Authentication '
             'para gerenciar o login.\n\n'
             'Os dados acadêmicos e a foto personalizada '
-            'são salvos no Firestore, no documento do usuário.\n\n'
+            'são salvos no Supabase pela API do StudyTrack.\n\n'
             'A foto é uma miniatura compactada e não '
             'altera a foto da sua conta Google.\n\n'
             'As preferências de idioma, aparência '
@@ -948,20 +953,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (confirmar != true) return;
 
+    String? aviso;
+
     try {
-      await FirebaseAuth.instance.signOut();
-
-      if (!mounted) return;
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
+      await ApiClient.instance.signOut();
     } catch (error) {
-      _mensaje(
-        _t('No se pudo cerrar la sesión.', 'Não foi possível sair da conta.'),
-      );
+      aviso = error is ApiException
+          ? error.message
+          : _t(
+              'No se pudo confirmar el cierre de la sesión en el servidor.',
+              'Não foi possível confirmar o encerramento da sessão no servidor.',
+            );
+    } finally {
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (error) {
+        aviso = _t(
+          'No se pudo confirmar el cierre de la sesión de Firebase.',
+          'Não foi possível confirmar o encerramento da sessão do Firebase.',
+        );
+      }
+    }
+
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+    if (aviso != null) {
+      messenger.showSnackBar(SnackBar(content: Text(aviso)));
     }
   }
 
@@ -976,10 +999,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         alignment: Alignment.centerLeft,
         child: Text(
           texto.toUpperCase(),
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.0),
         ),
       ),
     );
@@ -1019,13 +1040,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final tema = Theme.of(context);
     final user = _usuario;
 
-    // Solo usamos la foto personalizada de Firestore.
+    // Mostrar la foto personalizada guardada en el perfil.
     // Nunca tomamos la fotografía de Google.
     final valorFoto = datos['fotoPerfilBytes'];
 
     Uint8List? foto;
 
-    if (valorFoto is Blob) {
+    if (valorFoto is AppBlob) {
       foto = valorFoto.bytes;
     }
 
@@ -1189,7 +1210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           foregroundColor: Colors.white,
         ),
 
-        body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        body: StreamBuilder<AppDocument>(
           stream: _perfilStream,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
@@ -1197,9 +1218,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   _t(
                     'No se pudo cargar el perfil. '
-                        'Revisá la conexión con Firestore.',
+                        'Revisá la conexión y volvé a intentarlo.',
                     'Não foi possível carregar o perfil. '
-                        'Verifique a conexão com o Firestore.',
+                        'Verifique a conexão e tente novamente.',
                   ),
                   textAlign: TextAlign.center,
                 ),

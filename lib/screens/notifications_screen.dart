@@ -7,7 +7,7 @@ import '../services/notification_history.dart';
 // NOTIFICACIONES DE STUDYTRACK
 // =====================================================
 //
-// Historial de notificaciones desde Firestore.
+// Historial de notificaciones desde la API de StudyTrack.
 //
 // Compatible con español y portugués brasileño.
 //
@@ -107,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   // "Lembrete: PRUEBA"
   //
   // El nombre de la tarea permanece intacto.
-  // No se modifica la información de Firestore.
+  // El filtro se aplica a los avisos cargados.
 
   String _traducirTitulo(String titulo, String tipo) {
     if (tipo != 'tarea') {

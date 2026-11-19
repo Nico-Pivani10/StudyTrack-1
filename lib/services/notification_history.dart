@@ -1,19 +1,16 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import 'app_data.dart';
 import 'language_controller.dart';
 
 // =====================================================
 // HISTORIAL DE NOTIFICACIONES - STUDYTRACK
 // =====================================================
 //
-// Historial personal de avisos en Firestore.
-//
-// Ruta:
-// usuarios/{uid}/notificaciones
+// Historial personal de avisos mediante la API.
 //
 // Compatible con español y portugués brasileño.
 //
@@ -41,8 +38,7 @@ class NotificationHistory {
 
   static StreamSubscription<User?>? _suscripcionSesion;
 
-  static StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
-  _suscripcionHistorial;
+  static StreamSubscription<AppQuerySnapshot>? _suscripcionHistorial;
 
   static String? _uidEscuchado;
 
@@ -67,14 +63,17 @@ class NotificationHistory {
   }
 
   // =====================================================
-  // COLECCIÓN DE FIRESTORE
+  // COLECCIÓN DE AVISOS DE LA CUENTA AUTENTICADA
   // =====================================================
 
-  static CollectionReference<Map<String, dynamic>> _coleccion(String uid) {
-    return FirebaseFirestore.instance
-        .collection('usuarios')
-        .doc(uid)
-        .collection('notificaciones');
+  static AppCollection _coleccion(String uid) =>
+      AppCollection('notificaciones', ownerUid: uid);
+
+  static DateTime _fechaOrden(Map<String, dynamic> datos) {
+    final fecha = datos['creadaEn'] ?? datos['fecha'];
+    if (fecha is AppTimestamp) return fecha.toDate();
+    if (fecha is DateTime) return fecha;
+    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   // =====================================================
@@ -138,75 +137,73 @@ class NotificationHistory {
     if (uid == null) return;
 
     // ========================================
-    // ESCUCHAR FIRESTORE EN TIEMPO REAL
+    // ESCUCHAR EL HISTORIAL SINCRONIZADO POR LA API
     // ========================================
 
-    _suscripcionHistorial = _coleccion(uid)
-        .orderBy('creadaEn', descending: true)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            if (_uidEscuchado != uid) return;
+    _suscripcionHistorial = _coleccion(uid).snapshots().listen(
+      (snapshot) {
+        if (_uidEscuchado != uid) return;
 
-            // ====================================
-            // CONVERTIR DOCUMENTOS
-            // ====================================
+        // ====================================
+        // CONVERTIR DOCUMENTOS
+        // ====================================
 
-            final lista = snapshot.docs.map((documento) {
-              final datos = documento.data();
+        final lista = snapshot.docs.map((documento) {
+          final datos = documento.data();
 
-              final fechaGuardada = datos['fecha'];
+          final fechaGuardada = datos['fecha'];
 
-              final fecha = fechaGuardada is Timestamp
-                  ? fechaGuardada.toDate()
-                  : fechaGuardada is DateTime
-                  ? fechaGuardada
-                  : null;
+          final fecha = fechaGuardada is AppTimestamp
+              ? fechaGuardada.toDate()
+              : fechaGuardada is DateTime
+              ? fechaGuardada
+              : null;
 
-              // Mantener los nombres originales
-              // de los campos de Firestore.
+          // Mantener los nombres originales
+          // de los campos importados.
 
-              return <String, dynamic>{
-                ...datos,
+          return <String, dynamic>{
+            ...datos,
 
-                'documentoId': documento.id,
+            'documentoId': documento.id,
 
-                'id': datos['id'] is int ? datos['id'] : 0,
+            'id': datos['id'] is int ? datos['id'] : 0,
 
-                'titulo': datos['titulo']?.toString() ?? _t('Aviso', 'Aviso'),
+            'titulo': datos['titulo']?.toString() ?? _t('Aviso', 'Aviso'),
 
-                'mensaje': datos['mensaje']?.toString() ?? '',
+            'mensaje': datos['mensaje']?.toString() ?? '',
 
-                'tipo': datos['tipo']?.toString() ?? 'general',
+            'tipo': datos['tipo']?.toString() ?? 'general',
 
-                'estado': datos['estado']?.toString() ?? 'registrado',
+            'estado': datos['estado']?.toString() ?? 'registrado',
 
-                'fecha': fecha,
+            'fecha': fecha,
 
-                'leida': datos['leida'] == true,
-              };
-            }).toList();
+            'leida': datos['leida'] == true,
+          };
+        }).toList();
 
-            notificaciones.value = lista;
-            error.value = null;
-          },
+        lista.sort((a, b) => _fechaOrden(b).compareTo(_fechaOrden(a)));
+        notificaciones.value = lista;
+        error.value = null;
+      },
 
-          onError: (Object errorHistorial) {
-            if (_uidEscuchado != uid) return;
+      onError: (Object errorHistorial) {
+        if (_uidEscuchado != uid) return;
 
-            debugPrint(
-              'Error cargando el historial '
-              'de Firestore: $errorHistorial',
-            );
-
-            error.value = _t(
-              'No se pudo cargar el historial. '
-                  'Revisá las reglas de Firestore.',
-              'Não foi possível carregar o histórico. '
-                  'Verifique as regras do Firestore.',
-            );
-          },
+        debugPrint(
+          'Error cargando el historial '
+          'de la API: $errorHistorial',
         );
+
+        error.value = _t(
+          'No se pudo cargar el historial. '
+              'Revisá la conexión y volvé a intentar.',
+          'Não foi possível carregar o histórico. '
+              'Confira a conexão e tente novamente.',
+        );
+      },
+    );
   }
 
   // =====================================================
@@ -241,9 +238,9 @@ class NotificationHistory {
 
       'estado': 'registrado',
 
-      'fecha': Timestamp.now(),
+      'fecha': AppTimestamp.now(),
 
-      'creadaEn': FieldValue.serverTimestamp(),
+      'creadaEn': AppFieldValue.serverTimestamp(),
 
       'leida': false,
     });
@@ -284,7 +281,7 @@ class NotificationHistory {
     );
 
     // ========================================
-    // GUARDAR EN FIRESTORE
+    // GUARDAR EN LA API
     // ========================================
 
     await _coleccion(usuario.uid).doc('tarea_$id').set(<String, dynamic>{
@@ -302,9 +299,9 @@ class NotificationHistory {
 
       'estado': 'programado',
 
-      'fecha': Timestamp.fromDate(fecha),
+      'fecha': AppTimestamp.fromDate(fecha),
 
-      'creadaEn': FieldValue.serverTimestamp(),
+      'creadaEn': AppFieldValue.serverTimestamp(),
 
       'leida': false,
     });
@@ -327,17 +324,20 @@ class NotificationHistory {
 
     final documento = await referencia.get();
 
-    if (!documento.exists) return;
+    if (!documento.exists ||
+        FirebaseAuth.instance.currentUser?.uid != usuario.uid) {
+      return;
+    }
 
     final datos = documento.data();
 
     final fecha = datos?['fecha'];
 
-    if (fecha is Timestamp && fecha.toDate().isAfter(DateTime.now())) {
+    if (fecha is AppTimestamp && fecha.toDate().isAfter(DateTime.now())) {
       await referencia.update(<String, dynamic>{
         'estado': 'cancelado',
 
-        'canceladaEn': FieldValue.serverTimestamp(),
+        'canceladaEn': AppFieldValue.serverTimestamp(),
       });
     }
   }
@@ -357,7 +357,7 @@ class NotificationHistory {
     if (coincidencias.isEmpty) return;
 
     // Actualizar primero la interfaz.
-    // Después sincronizar con Firestore.
+    // Después sincronizar con la API.
 
     notificaciones.value = [
       for (final aviso in notificaciones.value)
@@ -410,7 +410,7 @@ class NotificationHistory {
         <String, dynamic>{...aviso, 'leida': true},
     ];
 
-    // Guardar los cambios en Firestore.
+    // Guardar los cambios en la API.
 
     unawaited(_guardarTodasLeidas(documentos));
   }
@@ -427,28 +427,11 @@ class NotificationHistory {
     }
 
     try {
-      // Firestore admite como máximo
-      // 500 escrituras por lote.
-      //
-      // Se conserva el tamaño de lote
-      // original de 400 documentos.
-
-      for (var inicio = 0; inicio < documentos.length; inicio += 400) {
-        final fin = (inicio + 400 < documentos.length)
-            ? inicio + 400
-            : documentos.length;
-
-        final lote = FirebaseFirestore.instance.batch();
-
-        for (final documentoId in documentos.sublist(inicio, fin)) {
-          lote.update(
-            _coleccion(usuario.uid).doc(documentoId),
-
-            <String, dynamic>{'leida': true},
-          );
-        }
-
-        await lote.commit();
+      for (final documentoId in documentos) {
+        if (FirebaseAuth.instance.currentUser?.uid != usuario.uid) return;
+        await _coleccion(
+          usuario.uid,
+        ).doc(documentoId).update(<String, dynamic>{'leida': true});
       }
     } catch (errorLectura) {
       debugPrint(
@@ -464,7 +447,7 @@ class NotificationHistory {
 
   // Borra la lista mostrada en pantalla.
   //
-  // NO elimina documentos de Firestore.
+  // Los registros permanecen guardados en el servidor.
 
   static void limpiar() {
     notificaciones.value = [];

@@ -1,0 +1,41 @@
+# Arquivos gerados pelo Python e ambientes locais
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Configurações locais, credenciais e logs
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+serviceAccountKey.json
+*.log
+
+# Arquivos do editor, sistema e Vercel
+.vercel/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Documentos e arquivos usados apenas no desenvolvimento
+*.md
+*.txt
+!requirements.txt
+!README.md
+!/TERMOS_DE_USO.md
+!/AVISO_DE_PRIVACIDADE.md
+!/DOCUMENTACAO_API.md
+VERIFICAR_APOS_MIGRACOES.sql
+
+# Pacotes compactados e a cópia antiga da página de testes
+*.zip
+*.rar
+public_notificacoes.html

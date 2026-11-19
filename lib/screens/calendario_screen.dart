@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/app_data.dart';
+
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
@@ -68,10 +70,10 @@ String _fechaDiaSeleccionado(BuildContext context, DateTime fecha) {
 // DOCUMENTOS Y FUNCIONES DE FECHA
 // =========================================================
 
-typedef _Docs = List<QueryDocumentSnapshot<Map<String, dynamic>>>;
+typedef _Docs = List<AppQueryDocument>;
 
 DateTime? _leerFecha(dynamic valor) {
-  if (valor is Timestamp) {
+  if (valor is AppTimestamp) {
     return valor.toDate();
   }
 
@@ -92,7 +94,7 @@ class _Evento {
   final bool esExamen;
   final bool completada;
 
-  final QueryDocumentSnapshot<Map<String, dynamic>>? examen;
+  final AppQueryDocument? examen;
 
   const _Evento({
     required this.titulo,
@@ -122,11 +124,11 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
   StudyTrackRepository? _repositorio;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _materiasStream;
+  Stream<AppQuerySnapshot>? _materiasStream;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _tareasStream;
+  Stream<AppQuerySnapshot>? _tareasStream;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _examenesStream;
+  Stream<AppQuerySnapshot>? _examenesStream;
 
   // =====================================================
   // INICIALIZACIÓN
@@ -156,13 +158,12 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   void _mensaje(String mensaje) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensaje)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   // =====================================================
-  // OBTENER EVENTOS DE FIRESTORE
+  // OBTENER EVENTOS DE LA API
   // =====================================================
 
   List<_Evento> _obtenerEventos(_Docs tareas, _Docs examenes) {
@@ -224,7 +225,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
   Future<void> _abrirFormulario(
     _Docs materias, {
-    QueryDocumentSnapshot<Map<String, dynamic>>? examen,
+    AppQueryDocument? examen,
   }) async {
     final guardado = await showDialog<bool>(
       context: context,
@@ -247,9 +248,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   // ELIMINAR EXAMEN
   // =====================================================
 
-  Future<void> _eliminarExamen(
-    QueryDocumentSnapshot<Map<String, dynamic>> examen,
-  ) async {
+  Future<void> _eliminarExamen(AppQueryDocument examen) async {
     final textos = AppLocalizations.of(context);
 
     final confirmar = await showDialog<bool>(
@@ -329,17 +328,17 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       ),
 
       // ========================================
-      // DATOS DE FIRESTORE
+      // DATOS DE LA API
       // ========================================
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: StreamBuilder<AppQuerySnapshot>(
         stream: _materiasStream,
 
         builder: (context, materiasSnapshot) {
-          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          return StreamBuilder<AppQuerySnapshot>(
             stream: _tareasStream,
 
             builder: (context, tareasSnapshot) {
-              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              return StreamBuilder<AppQuerySnapshot>(
                 stream: _examenesStream,
 
                 builder: (context, examenesSnapshot) {
@@ -357,9 +356,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                           _t(
                             context,
                             'No se pudieron cargar los eventos. '
-                                'Revisá la conexión y Firestore.',
+                                'Revisá la conexión y volvé a intentarlo.',
                             'Não foi possível carregar os eventos. '
-                                'Verifique a conexão com o Firestore.',
+                                'Verifique a conexão e tente novamente.',
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -622,9 +621,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
                 // Día actual.
                 todayDecoration: BoxDecoration(
-                  color: _colorAcento(
-                    context,
-                  ).withValues(alpha: _esOscuro(context) ? 0.22 : 0.35),
+                  color: _colorAcento(context)
+                      .withValues(alpha: _esOscuro(context) ? 0.22 : 0.35),
                   shape: BoxShape.circle,
                 ),
 
@@ -822,7 +820,7 @@ class _FormularioExamen extends StatefulWidget {
   final _Docs materias;
   final DateTime fechaInicial;
 
-  final QueryDocumentSnapshot<Map<String, dynamic>>? examen;
+  final AppQueryDocument? examen;
 
   const _FormularioExamen({
     required this.repositorio,
@@ -920,7 +918,7 @@ class _FormularioExamenState extends State<_FormularioExamen> {
   }
 
   // =====================================================
-  // GUARDAR EN FIRESTORE
+  // GUARDAR MEDIANTE LA API
   // =====================================================
 
   Future<void> _guardar() async {
@@ -935,7 +933,7 @@ class _FormularioExamenState extends State<_FormularioExamen> {
 
     try {
       // ========================================
-      // DATOS EN FIRESTORE
+      // DATOS MEDIANTE LA API
       // ========================================
 
       // Se conservan los mismos campos

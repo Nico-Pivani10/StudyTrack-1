@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/app_data.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/studytrack_repository.dart';
@@ -73,9 +74,8 @@ class _MateriasScreenState extends State<MateriasScreen> {
   void _mostrarMensaje(String mensaje) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensaje)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   // ============================================
@@ -84,7 +84,7 @@ class _MateriasScreenState extends State<MateriasScreen> {
 
   Future<void> _abrirFormulario(
     StudyTrackRepository repositorio, {
-    QueryDocumentSnapshot<Map<String, dynamic>>? documento,
+    AppQueryDocument? documento,
   }) async {
     final textos = AppLocalizations.of(context);
 
@@ -317,7 +317,7 @@ class _MateriasScreenState extends State<MateriasScreen> {
 
   Future<void> _eliminarMateria(
     StudyTrackRepository repositorio,
-    QueryDocumentSnapshot<Map<String, dynamic>> documento,
+    AppQueryDocument documento,
   ) async {
     final textos = AppLocalizations.of(context);
 
@@ -446,7 +446,7 @@ class _MateriasScreenState extends State<MateriasScreen> {
       // ========================================
       // ESCUCHAR MATERIAS DESDE FIREBASE
       // ========================================
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: StreamBuilder<AppQuerySnapshot>(
         stream: repositorio.escucharMaterias,
 
         builder: (context, snapshot) {
@@ -459,9 +459,9 @@ class _MateriasScreenState extends State<MateriasScreen> {
                   _t(
                     context,
                     'No se pudieron cargar las materias. '
-                        'Revisá tu conexión y los permisos de Firestore.',
+                        'Revisá tu conexión y volvé a intentarlo.',
                     'Não foi possível carregar as disciplinas. '
-                        'Verifique sua conexão e as permissões do Firestore.',
+                        'Verifique sua conexão e tente novamente.',
                   ),
                   textAlign: TextAlign.center,
                 ),
