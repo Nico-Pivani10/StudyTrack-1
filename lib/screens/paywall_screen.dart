@@ -1551,4 +1551,4 @@ class _PaywallScreenState extends State<PaywallScreen> {
             ),
     );
   }
-}
+}//Niklaus
