@@ -644,7 +644,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 // ====================================
                 Center(
                   child: Image.asset(
-                    'assets/images/logo_studytrack.png',
+                    'assets/logo_studytrack.png',
                     width: 200,
                     height: 160,
                     fit: BoxFit.contain,
@@ -962,5 +962,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-}
+  } 
+}// Niklaus
