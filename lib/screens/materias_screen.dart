@@ -288,9 +288,9 @@ class _MateriasScreenState extends State<MateriasScreen> {
     );
 
     // Liberar los controladores del formulario.
-    nombreController.dispose();
-    docenteController.dispose();
-    descripcionController.dispose();
+    //nombreController.dispose();
+    //docenteController.dispose();
+    //descripcionController.dispose();
 
     // ========================================
     // MENSAJE DE CONFIRMACIÓN
